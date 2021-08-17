@@ -37,9 +37,9 @@ rslt2<-fromJSON(loc2, flatten=TRUE)
 str(rslt1);str(rslt2)
 rslt.df1<-as.data.frame(rslt1)
 rslt.df2<-as.data.frame(rslt2)
-kumparan <- rslt.df1[[16]][[21]]; detik$sumber <- "@kumparancom"
+kumparan <- rslt.df1[[16]][[21]]; kumparan$sumber <- "@kumparancom"
 narasi <- rslt.df2[[16]][[15]]; narasi$sumber <- "@narasinewsroom"
-gabung <- rbind(detik,narasi)
+gabung <- rbind(kumparan,narasi)
 Timestamp <- gabung$created_at
 Username <- gabung$owner.username
 Comments <- gabung$text
