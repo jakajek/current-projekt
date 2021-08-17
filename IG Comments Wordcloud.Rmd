@@ -1,0 +1,69 @@
+---
+title: "Scrapping, Exctracting, Preprocessing, Wordcloud"
+output:
+  html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Instagram Comments Scraper
+
+Artikel ini adalah hasil uji coba kombinasi penggunaan **Python** dan **R** untuk melakukan *Text Mining* pada komentar-komentar di Instagram. *Scraping* komentar di Instagram menggunakan `instagram-scraper` di **Python**, selengkapnya bisa dilihat di website berikut <https://github.com/arc298/instagram-scraper>.
+
+Contoh yang digunakan di artikel ini adalah komentar Instagram akun **@kumparancom** dan **@narasinewsroom** pada unggahan/*posting* tentang perintah Pak Jokowi untuk menurunkan harga PCR. Karena output yang dihasilkan dari `instagram-scraper` bentuknya adalah `.json` maka untuk memudahkan pekerjaan di **R** kita akan ambil data yang diperlukan dan diubah bentuk datanya. Berikut adalah package yang diperlukan:
+```
+magrittr
+magicfor
+jsonlite
+tm
+qdapRegex
+```
+Selanjutnya kita akan panggil data `.json` yang telah tersimpan di folder sebelumnya untuk dilakukan proses ekstraksi data
+
+## EKSTRAKSI DATA
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(magrittr)
+library(magicfor)
+library(jsonlite)
+library(tm)
+library(qdapRegex)
+loc1 <- c("C:/Users/User/Desktop/tools/Python/IG Scraper/kumparancom/kumparancom.json")
+loc2 <- c("C:/Users/User/Desktop/tools/Python/IG Scraper/narasinewsroom/narasinewsroom.json") 
+rslt1<-fromJSON(loc1, flatten=TRUE)
+rslt2<-fromJSON(loc2, flatten=TRUE)
+str(rslt1);str(rslt2)
+rslt.df1<-as.data.frame(rslt1)
+rslt.df2<-as.data.frame(rslt2)
+kumparan <- rslt.df1[[16]][[21]]; detik$sumber <- "@kumparancom"
+narasi <- rslt.df2[[16]][[15]]; narasi$sumber <- "@narasinewsroom"
+gabung <- rbind(detik,narasi)
+Timestamp <- gabung$created_at
+Username <- gabung$owner.username
+Comments <- gabung$text
+IG_table1<-cbind(Timestamp,Username,Comments)
+```
+Berikut adalah contoh hasil ekstraksi data tersebut
+``` {r}
+library(knitr)
+kable(head(IG_table1), caption = "Contoh Hasil Ekstraksi Data")
+```
+
+## PREPROCESSING DATA
+Pada bagian ini akan dilakukan *preprocessing* data yang mana data tersebut akan "diolah" terlebih dahulu. Berikut adalah tahapannya
+
+**Cleaning**
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
