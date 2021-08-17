@@ -1,5 +1,5 @@
 ---
-title: "Scrapping, Exctracting, Preprocessing, Wordcloud"
+title: "*Scrape* Komentar Instagram & Membuat *Wordcloud* di *R*"
 output:
   html_document
 ---
@@ -55,6 +55,32 @@ kable(head(IG_table1), caption = "Contoh Hasil Ekstraksi Data")
 Pada bagian ini akan dilakukan *preprocessing* data yang mana data tersebut akan "diolah" terlebih dahulu. Berikut adalah tahapannya
 
 **Cleaning**
+Untuk membuat *Wordcloud* yang diperlukan hanyalah data **komentar**
+```{r}
+comment.txt <- IG_table1$Comments
+```
+Selanjutnya data tersebut akan kita bersihkan, mulai dari menghapus simbol dan angka hingga merubah huruf kapital menjadi kecil
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+# remove entities
+a11 = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ", comment.txt)
+# remove at people
+a11 = gsub("@\\w+", " ", a11)
+# remove emoticon
+a11 = iconv(a11,"latin1", 
+            "ASCII", sub = " ")
+# lower
+a11 = tolower(a11)
+# remove punctuation
+a11 = gsub("[[:punct:]]", " ", a11)
+a11 = gsub("[[:punct:]]", " ", a11)
+a11 = gsub("[^0-9A-Za-z///' ]","'" , a11 ,ignore.case = TRUE)
+a11 = gsub("''","" , a11 ,ignore.case = TRUE)
+# remove numbers
+a11 = gsub("[[:digit:]]", " ", a11)
+# remove html links
+a11 = gsub("http\\w+", " ", a11)
+```
 
 
 
