@@ -1,5 +1,7 @@
 ---
-title: "*Scrape* Komentar Instagram & Membuat *Wordcloud* di *R*"
+title: "*Scrape* Komentar Instagram & Membuat *Wordcloud*"
+author: "@jakajek"
+date: "8/19/2021"
 output:
   html_document
 ---
@@ -13,16 +15,20 @@ knitr::opts_chunk$set(echo = TRUE)
 Artikel ini adalah hasil uji coba kombinasi penggunaan **Python** dan **R** untuk melakukan *Text Mining* pada komentar-komentar di Instagram. *Scraping* komentar di Instagram menggunakan `instagram-scraper` di **Python**, selengkapnya bisa dilihat di website berikut <https://github.com/arc298/instagram-scraper>.
 
 Contoh yang digunakan di artikel ini adalah komentar Instagram akun **@kumparancom** dan **@narasinewsroom** pada unggahan/*posting* tentang perintah Pak Jokowi untuk menurunkan harga PCR. Karena output yang dihasilkan dari `instagram-scraper` bentuknya adalah `.json` maka untuk memudahkan pekerjaan di **R** kita akan ambil data yang diperlukan dan diubah bentuk datanya. Berikut adalah package yang diperlukan:
+
 ```
 magrittr
 magicfor
 jsonlite
 tm
 qdapRegex
+knitr
+wordcloud2
 ```
+
 Selanjutnya kita akan panggil data `.json` yang telah tersimpan di folder sebelumnya untuk dilakukan proses ekstraksi data
 
-## EKSTRAKSI DATA
+## *EXTRACT DATA*
 
 ```{r, results='hide', message=FALSE, warning=FALSE}
 library(magrittr)
@@ -30,6 +36,8 @@ library(magicfor)
 library(jsonlite)
 library(tm)
 library(qdapRegex)
+library(knitr)
+library(wordcloud2)
 loc1 <- c("C:/Users/User/Desktop/tools/Python/IG Scraper/kumparancom/kumparancom.json")
 loc2 <- c("C:/Users/User/Desktop/tools/Python/IG Scraper/narasinewsroom/narasinewsroom.json") 
 rslt1<-fromJSON(loc1, flatten=TRUE)
@@ -43,22 +51,24 @@ gabung <- rbind(kumparan,narasi)
 Timestamp <- gabung$created_at
 Username <- gabung$owner.username
 Comments <- gabung$text
-IG_table1<-cbind(Timestamp,Username,Comments)
+IG_table1<-cbind(Timestamp,Username,Comments) %>% as.data.frame()
 ```
+
 Berikut adalah contoh hasil ekstraksi data tersebut
+
 ``` {r}
-library(knitr)
 kable(head(IG_table1), caption = "Contoh Hasil Ekstraksi Data")
 ```
 
-## PREPROCESSING DATA
+## *PREPROCESSING DATA*
 Pada bagian ini akan dilakukan *preprocessing* data yang mana data tersebut akan "diolah" terlebih dahulu. Berikut adalah tahapannya
 
 **Cleaning**
 Untuk membuat *Wordcloud* yang diperlukan hanyalah data **komentar**
 ```{r}
-comment.txt <- IG_table1$Comments
+comment.txt <- IG_table1$Comments %>% as.data.frame()
 ```
+
 Selanjutnya data tersebut akan kita bersihkan, mulai dari menghapus simbol dan angka hingga merubah huruf kapital menjadi kecil
 
 ```{r, results='hide', message=FALSE, warning=FALSE}
@@ -73,7 +83,6 @@ a11 = iconv(a11,"latin1",
 a11 = tolower(a11)
 # remove punctuation
 a11 = gsub("[[:punct:]]", " ", a11)
-a11 = gsub("[[:punct:]]", " ", a11)
 a11 = gsub("[^0-9A-Za-z///' ]","'" , a11 ,ignore.case = TRUE)
 a11 = gsub("''","" , a11 ,ignore.case = TRUE)
 # remove numbers
@@ -82,14 +91,112 @@ a11 = gsub("[[:digit:]]", " ", a11)
 a11 = gsub("http\\w+", " ", a11)
 ```
 
+Pada proses data *cleaning* hal yang harus diperhatikan adalah menghapus *stopwords* atau kata yang tidak memiliki makna apapun
 
+```{r, results='hide', message=FALSE, warning=FALSE}
+require(tau)
+GetStopWords <- function() {
+  stop.words <- readLines("C:/Users/User/Desktop/tools/R/corpus/stop.txt", encoding="latin1")
+  return(stop.words)
+}
+KStpTerms <- GetStopWords()
+## karena terbatas, maka dipecah dulu
+group <- 3400
+n <- length(KStpTerms)
+r <- rep(1:ceiling(n/group), each=group)[1:n]
+d <- split(KStpTerms, r)
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+a11 <- Corpus(VectorSource(a11))
+a11 = tm_map(a11, removeWords, c(d[[1]]))
+a11 = tm_map(a11, removeWords, c(d[[2]]))
+a11 <- data.frame(text=get("content", a11), check.rows = T)
+a11 <- a11$text
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Jika ada kata yang ingin dihapus selain *stopwords* maka kita bisa menggunakan cara berikut:
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+rmvwrds <- c('jokowi', 'ribu', 'pcr') #disesuaikan dengan kebutuhan
+a11 = removeWords(a11,rmvwrds)
+```
+
+Untuk memastikan proses data *preprocessing* berjalan dengan baik, maka kita akan mengulangi proses tersebut
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+a11 = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", " ", a11)
+# remove at people
+a11 = gsub("@\\w+", " ", a11)
+# remove emoticon
+a11 = iconv(a11,"latin1", 
+            "ASCII", sub = " ")
+# remove punctuation
+a11 = gsub("[[:punct:]]", " ", a11)
+a11 = gsub("[^0-9A-Za-z///' ]","'" , a11 ,ignore.case = TRUE)
+#a11 = gsub("''","" , a11 ,ignore.case = TRUE)
+a11 = gsub("[[:digit:]]", " ", a11)
+# remove html links
+a11 = gsub("http\\w+", " ", a11)
+# remove nchar <3
+a11 = rm_nchar_words(a11,"1,3")
+#remove blank spaces at begining
+a11 = gsub("^ ", "", a11)
+# remove unnecessary spaces
+a11 = gsub("[ \t]{2,}", " ", a11)
+a11 = gsub("^\\s+|\\s+$", " ", a11)
+
+# define "tolower error handling" function 
+try.error = function(x)
+{
+  # create missing value
+  y = NA
+  # tryCatch error
+  try_error = tryCatch(tolower(x), error=function(e) e)
+  # if not an error
+  if (!inherits(try_error, "error"))
+    y = tolower(x)
+  # result
+  return(y)
+}
+# lower case using try.error with sapply 
+a11 = sapply(a11, try.error)
+a11 = gsub("[[:punct:]]", "", a11)
+
+# remove NAs in some_txt
+a11 = a11[!is.na(a11)]
+names(a11) = "Comments"
+```
+
+Berikut adalah contoh data yang sudah melalui proses *cleaning*
+```{r}
+head(strwrap(a11))
+```
+
+## *WORDCLOUD*
+
+Tahapan selanjutnya, setelah *preprocessing* data selesai dan dipastikan data tidak mengandung simbol, angka, *emoticon*, spasi ganda, dan  kata yang tidak memiliki makna, data tersebut dapat kita gunakan untuk membuat *wordcloud*. Saat membuat *wordcloud* hal pertama yang harus dilakukan adalah mentransformasi data tersebut kedalam *corpus* yang selanjutnya akan kita ubah bentuk datanya menjadi *matrix* untuk melihat frekuensi kemunculan kata pada data
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+corpus_tm <- Corpus(VectorSource(a11))
+find_freq_terms_fun <- function(corpus_in){
+  library(dplyr)
+  doc_term_mat <- TermDocumentMatrix(corpus_in)
+  freq_terms <- findFreqTerms(doc_term_mat)[1:max(doc_term_mat$nrow)]
+  terms_grouped <-
+    doc_term_mat[freq_terms,] %>%
+    as.matrix() %>%
+    rowSums() %>%
+    data.frame(Term=freq_terms, Frequency = .) %>%
+    arrange(desc(Frequency)) %>%
+    mutate(prop_term_to_total_terms=Frequency/nrow(.))
+  return(data.frame(terms_grouped))
+}
+freq_terms <- data.frame(find_freq_terms_fun(corpus_tm))
+```
+
+Selanjutnya untuk membuat *wordcloud* kita akan mengunakan *package* `wordcloud2` berikut adalah hasilnya
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(0811)
+wordcloud2(freq_terms[,1:2], color = "random-light", backgroundColor = "black", 
+           minRotation = -pi/6, maxRotation = -pi/6, minSize = 5, rotateRatio = 1)
+```
