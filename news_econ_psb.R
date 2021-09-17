@@ -11,6 +11,7 @@ sources <- test1 %>%
   distinct(sumber) %>%
   rename(label = sumber)
 
+
 destinations <- test1 %>%
   distinct(kategori) %>%
   rename(label = kategori)
@@ -136,8 +137,8 @@ is_alluvia_form(as.data.frame(cb1), axes = 1:3, silent = TRUE)
 ggplot(as.data.frame(cb1),
        aes(y = bobot, axis1 = sumber, axis2 = kategori)) +
   geom_alluvium(aes(fill = sentimen_berita), width = 1/12) +
-  geom_stratum(width = 1/12, fill = "black", color = "white") +
-  geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
+  geom_stratum(width = 1/9, fill = "orange", color = "black") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
   scale_x_discrete(limits = c("Sumber", "Kategori"), expand = c(.05, .05)) +
   scale_fill_brewer(type = "qual", palette = "Set1", aesthetics = "colour") +
   theme_minimal() +
